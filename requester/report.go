@@ -204,11 +204,23 @@ func (r *report) snapshot() Report {
 }
 
 func (r *report) latencies() []LatencyDistribution {
-	pctls := []int{10, 25, 50, 75, 90, 95, 99}
+	pctls := []int{10, 25, 50, 75, 90, 95, 99, 999}
 	data := make([]float64, len(pctls))
 	j := 0
 	for i := 0; i < len(r.lats) && j < len(pctls); i++ {
+		if pctls[j] == 999 {
+			current := float64(i*100) / float64(len(r.lats))
+			if current >= 99.9 {
+				data[j] = r.lats[i]
+				j++
+			}
+			continue
+		}
 		current := i * 100 / len(r.lats)
+		if pctls[j] == 999 && float64(current) >= 99.9 {
+			data[j] = r.lats[i]
+			j++
+		}
 		if current >= pctls[j] {
 			data[j] = r.lats[i]
 			j++
@@ -217,7 +229,12 @@ func (r *report) latencies() []LatencyDistribution {
 	res := make([]LatencyDistribution, len(pctls))
 	for i := 0; i < len(pctls); i++ {
 		if data[i] > 0 {
-			res[i] = LatencyDistribution{Percentage: pctls[i], Latency: data[i]}
+			if pctls[i] == 999 {
+				res[i] = LatencyDistribution{Percentage: 99.9, Latency: data[i]}
+			} else {
+				res[i] = LatencyDistribution{Percentage: pctls[i], Latency: data[i]}
+			}
+
 		}
 	}
 	return res
